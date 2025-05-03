@@ -1,0 +1,61 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "credit-risk-predictor.fullname" . }} # Nom du Deployment généré
+  labels:
+    {{- include "credit-risk-predictor.labels" . | nindent 4 }} # Labels standards
+spec:
+  {{- if not .Values.autoscaling.enabled }} # Si l'autoscaling n'est pas activé, utiliser replicaCount
+  replicas: {{ .Values.replicaCount }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "credit-risk-predictor.selectorLabels" . | nindent 6 }} # Labels pour trouver les pods
+  template:
+    metadata:
+      {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        {{- include "credit-risk-predictor.selectorLabels" . | nindent 8 }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "credit-risk-predictor.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: {{ .Chart.Name }}
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}" # Image Docker à utiliser
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: 5000 # Port interne du conteneur (celui exposé par Flask/Gunicorn)
+              protocol: TCP
+          # livenessProbe: # Vérifie si le conteneur est toujours en vie
+          #   httpGet:
+          #     path: / # Utiliser l'endpoint de health check si vous en ajoutez un
+          #     port: http
+          # readinessProbe: # Vérifie si le conteneur est prêt à recevoir du trafic
+          #   httpGet:
+          #     path: / # Utiliser l'endpoint de readiness si vous en ajoutez un
+          #     port: http
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

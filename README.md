@@ -100,7 +100,7 @@ Ces métriques indiquent :
 ### Installation
 ```bash
 # Cloner le repository
-git clone [url-du-repo]
+git clone https://github.com/Bovisaloukou/credit_risk_project.git
 cd credit_risk_project
 
 # Installer les dépendances avec Poetry

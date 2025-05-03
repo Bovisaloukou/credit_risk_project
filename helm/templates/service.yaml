@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "credit-risk-predictor.fullname" . }} # Nom du Service généré
+  labels:
+    {{- include "credit-risk-predictor.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.service.type }} # Type de service (ClusterIP, NodePort, LoadBalancer)
+  ports:
+    - port: {{ .Values.service.port }} # Port du service
+      targetPort: http # Référence au nom du port dans le conteneur du Deployment
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "credit-risk-predictor.selectorLabels" . | nindent 8 }} # Sélectionne les pods à inclure dans ce service

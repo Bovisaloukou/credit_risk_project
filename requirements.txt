@@ -1,0 +1,9 @@
+pandas>=1.0.0
+numpy>=1.18.0
+scikit-learn>=1.0.0
+joblib>=1.0.0
+Flask>=2.0.0
+requests>=2.25.0 # Pour tester l'API
+gunicorn>=20.0.0 # Serveur WSGI robuste pour Flask en production (utile aussi avec Docker)
+matplotlib>=3.0.0 # Pour les visualisations (notebook)
+seaborn>=0.11.0 # Pour les visualisations (notebook)
