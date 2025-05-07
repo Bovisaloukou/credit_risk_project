@@ -132,6 +132,14 @@ poetry run python src/model_training.py
 poetry run python api/app.py
 ```
 
+4. **Lancer l'Interface Utilisateur Streamlit**
+
+Si une application Streamlit (`app_streamlit.py`) est disponible à la racine du projet pour une interaction plus visuelle avec le modèle :
+
+```bash
+poetry run streamlit run app_streamlit.py
+```
+
 ### Exemple d'Utilisation de l'API
 
 ```python
@@ -139,11 +147,18 @@ import requests
 
 # Données d'un client
 client_data = {
-    "income": 75000.0,
-    "loan_amount": 30000.0,
-    "payment_delays": 1,
-    "employment_length": 10.0,
-    "age": 45
+    "income": 75000.0,              # Revenu annuel du client
+    "loan_amount": 30000.0,          # Montant du prêt demandé
+    "payment_delays": 1,             # Nombre de retards de paiement antérieurs
+    "employment_length": 10.0,         # Durée d'emploi en années
+    "age": 45,                       # Âge du client
+    "credit_score": 720,             # Score de crédit (300-850)
+    "debt_to_income_ratio": 0.35,    # Ratio dette/revenu
+    "payment_history_score": 85,     # Score d'historique de paiement (0-100)
+    "employment_type": "CDI",        # Type d'emploi (CDI, CDD, Indépendant, Sans emploi, Retraité, Fonctionnaire)
+    "marital_status": "Marié",      # Situation matrimoniale (Célibataire, Marié, Divorcé, Veuf)
+    "num_dependents": 2,             # Nombre de personnes à charge
+    "home_ownership": "Propriétaire"  # Statut de logement (Propriétaire, Locataire, Logé par famille)
 }
 
 # Requête à l'API
