@@ -1,35 +1,47 @@
 import pandas as pd
 import numpy as np
-from sklearn.impute import SimpleImputer
-from sklearn.preprocessing import StandardScaler
+from sklearn.impute import SimpleImputer, KNNImputer
+from sklearn.preprocessing import StandardScaler, OneHotEncoder
 from sklearn.compose import ColumnTransformer
 from sklearn.pipeline import Pipeline
 from sklearn.base import BaseEstimator, TransformerMixin # Importer aussi pour ArrayToDataFrameTransformer
 
 
-# Définir les colonnes numériques
-NUMERICAL_COLS = ['income', 'loan_amount', 'payment_delays', 'employment_length', 'age']
+# Colonnes numériques et catégorielles enrichies
+NUMERICAL_COLS = [
+    'income', 'loan_amount', 'payment_delays', 'employment_length', 'age',
+    'credit_score', 'debt_to_income_ratio', 'payment_history_score', 'num_dependents'
+]
+CATEGORICAL_COLS = [
+    'employment_type', 'marital_status', 'home_ownership'
+]
 
-def build_preprocessing_pipeline():
+def build_preprocessing_pipeline(imputer_type='median'):
     """
-    Construit un pipeline de prétraitement pour les caractéristiques numériques.
-    Gère l'imputation et la mise à l'échelle. Les autres colonnes sont droppées.
+    Construit un pipeline de prétraitement pour les caractéristiques numériques et catégorielles.
+    imputer_type: 'median' ou 'knn'
     """
-    # Pipeline pour les caractéristiques numériques : Imputation puis Scaling
+    if imputer_type == 'knn':
+        numerical_imputer = KNNImputer(n_neighbors=5)
+    else:
+        numerical_imputer = SimpleImputer(strategy='median')
+
     numerical_pipeline = Pipeline([
-        ('imputer', SimpleImputer(strategy='median')), # Imputer avec la médiane
-        ('scaler', StandardScaler())                     # Scaler avec Standard Scaler
+        ('imputer', numerical_imputer),
+        ('scaler', StandardScaler())
     ])
 
-    # Utiliser ColumnTransformer pour appliquer le pipeline numérique aux colonnes spécifiées
-    # et DROPER les colonnes non spécifiées. L'output sera un numpy array des colonnes numériques traitées.
+    categorical_pipeline = Pipeline([
+        ('encoder', OneHotEncoder(handle_unknown='ignore', sparse_output=False))
+    ])
+
     preprocessor = ColumnTransformer(
         transformers=[
-            ('num', numerical_pipeline, NUMERICAL_COLS)
+            ('num', numerical_pipeline, NUMERICAL_COLS),
+            ('cat', categorical_pipeline, CATEGORICAL_COLS)
         ],
-        remainder='drop' # <--- CHANGEMENT ICI : Drop les colonnes non spécifiées
+        remainder='drop'
     )
-
     return preprocessor
 
 class ArrayToDataFrameTransformer(BaseEstimator, TransformerMixin):
@@ -78,12 +90,19 @@ if __name__ == '__main__':
         'payment_delays': [0, 1, 3, np.nan],
         'employment_length': [5.0, 10.0, 2.0, np.nan],
         'age': [30, 40, 25, 50],
+        'credit_score': [700, 750, 680, 720],
+        'debt_to_income_ratio': [0.3, 0.25, 0.4, 0.35],
+        'payment_history_score': [0.9, 0.85, 0.8, 0.95],
+        'num_dependents': [2, 1, 3, 0],
+        'employment_type': ['salaried', 'self-employed', 'salaried', 'salaried'],
+        'marital_status': ['single', 'married', 'single', 'married'],
+        'home_ownership': ['rent', 'own', 'rent', 'own'],
         'some_other_col': ['A', 'B', 'C', 'D'],
         'default': [0, 0, 1, 0]
     })
 
-    X = data.drop(['default', 'some_other_col'], axis=1) # Tester uniquement les colonnes numériques
-    preprocessor = build_preprocessing_pipeline()
+    X = data.drop(['default', 'some_other_col'], axis=1) # Tester uniquement les colonnes numériques et catégorielles
+    preprocessor = build_preprocessing_pipeline(imputer_type='median')
     X_processed_array = preprocessor.fit_transform(X)
 
     print("\nOutput du ColumnTransformer (array numpy):")

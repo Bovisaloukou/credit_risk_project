@@ -2,7 +2,7 @@ import pandas as pd
 import numpy as np
 import joblib
 import os
-from sklearn.model_selection import train_test_split, GridSearchCV
+from sklearn.model_selection import train_test_split, RandomizedSearchCV
 from sklearn.pipeline import Pipeline
 from sklearn.ensemble import GradientBoostingClassifier
 from sklearn.metrics import roc_auc_score, precision_score, recall_score, confusion_matrix, ConfusionMatrixDisplay
@@ -23,10 +23,12 @@ PIPELINE_FILEPATH = os.path.join(MODEL_DIR, 'full_pipeline.joblib')
 
 # Paramètres de Grid Search (simplifiés pour l'exemple)
 # En pratique, une grille plus large et plus de CV seraient nécessaires.
-PARAM_GRID = {
-    'estimator__n_estimators': [100, 200], # Paramètres du modèle final dans le pipeline
-    'estimator__learning_rate': [0.05, 0.1],
-    'estimator__max_depth': [3, 4],
+PARAM_DIST = {
+    'estimator__n_estimators': [100, 200, 300, 400],
+    'estimator__learning_rate': [0.01, 0.05, 0.1, 0.2],
+    'estimator__max_depth': [3, 4, 5, 6],
+    'estimator__subsample': [0.7, 0.8, 1.0],
+    'estimator__min_samples_split': [2, 5, 10, 20]
 }
 
 
@@ -52,12 +54,13 @@ def load_data(filepath):
         return None
 
 
-def build_full_pipeline():
+def build_full_pipeline(imputer_type='median'):
     """
     Construit le pipeline complet de prétraitement, d'ingénierie des caractéristiques et de modélisation.
+    Permet de choisir le type d'imputation ('median' ou 'knn').
     """
     # 1. Pipeline de prétraitement (Imputation et Scaling) - Sortie: numpy array
-    preprocessor = build_preprocessing_pipeline()
+    preprocessor = build_preprocessing_pipeline(imputer_type=imputer_type)
 
     # 2. Convertir l'array numpy en DataFrame - Sortie: DataFrame avec noms NUMERICAL_COLS
     array_to_df_converter = ArrayToDataFrameTransformer(column_names=NUMERICAL_COLS)
@@ -78,39 +81,43 @@ def build_full_pipeline():
 
     return pipeline
 
-def train_model(pipeline, X_train, y_train, param_grid=None):
+def train_model(pipeline, X_train, y_train, param_dist=None, n_iter=20):
     """
-    Entraîne le pipeline complet, optionnellement avec GridSearchCV.
+    Entraîne le pipeline complet avec RandomizedSearchCV.
     """
     print("Début de l'entraînement du pipeline...")
 
-    if param_grid is None:
-         param_grid = PARAM_GRID # Utiliser la grille définie en haut du fichier
-         print("Utilisation de la grille de paramètres par défaut pour GridSearchCV.")
+    if param_dist is None:
+         param_dist = PARAM_DIST # Utiliser la distribution définie en haut du fichier
+         print("Utilisation de la distribution de paramètres par défaut pour RandomizedSearchCV.")
     else:
-         print("Utilisation de la grille de paramètres fournie pour GridSearchCV.")
+         print("Utilisation de la distribution de paramètres fournie pour RandomizedSearchCV.")
 
 
-    # Initialiser GridSearchCV
-    # Note: Les noms des paramètres dans param_grid doivent correspondre aux noms des étapes du pipeline + nom_param
+    # Initialiser RandomizedSearchCV
+    # Note: Les noms des paramètres dans param_dist doivent correspondre aux noms des étapes du pipeline + nom_param
     # ex: 'estimator__n_estimators' car 'estimator' est le nom de l'étape GradientBoostingClassifier
-    grid_search = GridSearchCV(estimator=pipeline,
-                               param_grid=param_grid,
-                               scoring='roc_auc',
-                               cv=3, # Cross-validation en 3 plis
-                               n_jobs=-1, # Utiliser tous les cœurs CPU disponibles
-                               verbose=2)
+    search = RandomizedSearchCV(
+        estimator=pipeline,
+        param_distributions=param_dist,
+        n_iter=n_iter,
+        scoring='roc_auc',
+        cv=5,  # Validation croisée en 5 plis
+        n_jobs=-1,
+        verbose=2,
+        random_state=42
+    )
 
-    # Entraîner GridSearchCV
-    print("Lancement de GridSearchCV...")
+    # Entraîner RandomizedSearchCV
+    print("Lancement de RandomizedSearchCV...")
     # Fit le pipeline complet, y compris preprocessing et FE, sur les données d'entraînement
-    grid_search.fit(X_train, y_train)
+    search.fit(X_train, y_train)
 
     # Récupérer le meilleur estimateur (qui est le pipeline complet ajusté)
-    best_pipeline = grid_search.best_estimator_
-    print("GridSearchCV terminé.")
-    print(f"Meilleurs paramètres trouvés: {grid_search.best_params_}")
-    print(f"Meilleur score ROC AUC (validation): {grid_search.best_score_:.4f}")
+    best_pipeline = search.best_estimator_
+    print("RandomizedSearchCV terminé.")
+    print(f"Meilleurs paramètres trouvés: {search.best_params_}")
+    print(f"Meilleur score ROC AUC (validation): {search.best_score_:.4f}")
 
     print("Entraînement du pipeline complet terminé.")
     return best_pipeline
@@ -192,12 +199,12 @@ if __name__ == "__main__":
         print(f"Taille de l'ensemble d'entraînement: {X_train.shape}")
         print(f"Taille de l'ensemble de test: {X_test.shape}")
 
-        # 5. Construire le pipeline
-        full_pipeline = build_full_pipeline()
+        # 5. Construire le pipeline (choix de l'imputation possible)
+        full_pipeline = build_full_pipeline(imputer_type='knn')
         print("\nPipeline construit:")
         print(full_pipeline)
 
-        # 6. Entraîner le pipeline (avec GridSearchCV inclus)
+        # 6. Entraîner le pipeline (avec RandomizedSearchCV inclus)
         trained_pipeline = train_model(full_pipeline, X_train, y_train)
 
         # 7. Évaluer le pipeline entraîné sur l'ensemble de test

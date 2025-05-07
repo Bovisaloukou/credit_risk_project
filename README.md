@@ -25,12 +25,19 @@ Ce projet implémente un système d'évaluation automatisé du risque de crédit
 ## Architecture du Projet
 
 ### 1. Structure des Données
-Le modèle utilise 5 caractéristiques principales :
+Le modèle utilise désormais de nombreuses caractéristiques :
 - `income` : Revenu annuel du client
 - `loan_amount` : Montant du prêt demandé
 - `payment_delays` : Nombre de retards de paiement antérieurs
 - `employment_length` : Durée d'emploi en années
 - `age` : Âge du client
+- `credit_score` : Score de crédit (300-850)
+- `debt_to_income_ratio` : Ratio dette/revenu
+- `payment_history_score` : Score d'historique de paiement (0-100)
+- `employment_type` : Type d'emploi (CDI, CDD, Indépendant, Sans emploi, Retraité, Fonctionnaire)
+- `marital_status` : Situation matrimoniale (Célibataire, Marié, Divorcé, Veuf)
+- `num_dependents` : Nombre de personnes à charge
+- `home_ownership` : Statut de logement (Propriétaire, Locataire, Logé par famille)
 
 ### 2. Composants Principaux
 
@@ -40,9 +47,9 @@ Le modèle utilise 5 caractéristiques principales :
 - Introduit des valeurs manquantes contrôlées (5-15%)
 
 #### Pipeline de Prétraitement (`src/preprocessing.py`)
-- Gestion des valeurs manquantes par imputation médiane
+- Gestion des valeurs manquantes par imputation médiane **ou** KNN (configurable)
 - Standardisation des variables numériques
-- Conversion des formats de données
+- Encodage OneHot des variables catégorielles
 
 #### Ingénierie des Caractéristiques (`src/features.py`)
 - Calcul du ratio dette/revenu
@@ -52,9 +59,10 @@ Le modèle utilise 5 caractéristiques principales :
 
 #### Entraînement du Modèle (`src/model_training.py`)
 - Utilise GradientBoostingClassifier
-- Optimisation des hyperparamètres via GridSearchCV
-- Validation croisée en 3 plis
+- Optimisation des hyperparamètres via **RandomizedSearchCV** (plus efficace que GridSearchCV)
+- Validation croisée en 5 plis
 - Métriques d'évaluation : ROC-AUC, précision, rappel
+- Possibilité de choisir la stratégie d'imputation (médiane ou KNN)
 
 #### Service de Prédiction (`src/prediction_service.py`)
 - Chargement et gestion du modèle entraîné
@@ -142,6 +150,19 @@ client_data = {
 response = requests.post('http://localhost:5000/predict', json=client_data)
 probability = response.json()['probability_of_default']
 ```
+
+## Visualisation des Données
+
+Un script automatique (`src/data_visualization.py`) permet de générer :
+- Histogrammes pour chaque variable numérique
+- Heatmap de corrélation
+- Boxplots et barplots pour explorer les relations entre variables catégorielles et la cible
+
+Pour lancer la visualisation :
+```bash
+poetry run python src/data_visualization.py
+```
+Les graphiques sont sauvegardés dans `data/visualizations/`.
 
 ## Déploiement
 
